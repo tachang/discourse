@@ -34,6 +34,7 @@ class TopicEmbed < ActiveRecord::Base
         end
       end
     else
+      absolutize_urls(url, contents)
       post = embed.post
       # Update the topic if it changed
       if content_sha1 != embed.content_sha1
@@ -63,7 +64,7 @@ class TopicEmbed < ActiveRecord::Base
     prefix = "#{uri.scheme}://#{uri.host}"
     prefix << ":#{uri.port}" if uri.port != 80 && uri.port != 443
 
-    fragment = Nokogiri::HTML.fragment(contents)
+    fragment = Nokogiri::HTML.fragment("<div>#{contents}</div>")
     fragment.css('a').each do |a|
       href = a['href']
       if href.present? && href.start_with?('/')
@@ -76,7 +77,6 @@ class TopicEmbed < ActiveRecord::Base
         a['src'] = "#{prefix}/#{src.sub(/^\/+/, '')}"
       end
     end
-
     fragment.to_html
   end
 

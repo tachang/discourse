@@ -35,6 +35,7 @@ module UserNameSuggester
   def self.sanitize_username!(name)
     name.gsub!(/^[^[:alnum:]]+|\W+$/, "")
     name.gsub!(/\W+/, "_")
+    name.gsub!(/^\_+/, '')
   end
 
   def self.rightsize_username(name)
