@@ -65,20 +65,21 @@ class Typepad < Thor
       post = TopicEmbed.import(user, entry[:unique_url], entry[:title], entry[:body])
       if post.present?
         post.update_column(:created_at, entry[:date])
-        post.topic.update_column(:created_at, entry[:date])
+        post.topic.update_attributes(:created_at => entry[:date], :updated_at => entry[:date])
         entry[:comments].each do |c|
           username = c[:author]
+
           if c[:email].present? && c[:email] != "none@unknown.com"
             email = c[:email]
             post_user = User.where(email: email).first
             if post_user.blank?
-              post_user = User.create!(email: email, username: UserNameSuggester.suggest(username))
+              post_user = User.create!(name: c[:name], email: email, username: UserNameSuggester.suggest(username))
             end
           else
             post_user = User.where(username: username).first
             if post_user.blank?
               suggested = UserNameSuggester.suggest(username)
-              post_user = User.create!(email: "#{suggested}@no-email-found.com", username: suggested)
+              post_user = User.create!(name: c[:name], email: "#{suggested}@no-email-found.com", username: suggested)
             end
           end
 
@@ -124,7 +125,7 @@ class Typepad < Thor
         result[key.to_sym] = value
       else
         result[:body] ||= ""
-        result[:body] << l
+        result[:body] << l << "\n"
       end
     end
     result
@@ -191,14 +192,44 @@ class Typepad < Thor
           comment[:author] = from_redis
         end
 
-        comment[:author] = "commenter" if comment[:author].blank?
-        old = comment[:author]
-        if comment[:author].index(' ')
-          comment[:name] = comment[:author]
-          comment[:author] = comment[:author].split(' ')[0]
-        elsif comment[:author].size >= 15
-          comment[:name] = comment[:author]
+        comment[:author].gsub!(/^[_\.]+/, '')
+        comment[:author].gsub!(/[_\.]+$/, '')
+
+        if comment[:author].size < 12
+          comment[:author].gsub!(/ /, '_')
+        else
+          segments = []
+          current = ""
+
+          last_upper = nil
+          comment[:author].each_char do |c|
+            is_upper = /[[:upper:]]/.match(c)
+
+            if (current.size > 1 && is_upper != last_upper)
+              segments << current
+              current = ""
+            end
+            last_upper = is_upper
+
+            if c == " " || c == "." || c == "_" || c == "-"
+              segments << current
+              current = ""
+            else
+              current << c
+            end
+          end
+          segments.delete_if {|s| s.nil? || s.size < 2}
+          segments << current
+
+          comment[:author] = segments[0]
+          if segments.size > 1 && segments[1][0] =~ /[a-zA-Z]/
+            comment[:author] << segments[1][0]
+          end
         end
+
+        comment[:name] = comment[:author]
+        comment[:author] = "commenter" if comment[:author].blank?
+        comment[:author] = "codinghorror" if comment[:author] == "Jeff Atwood" || comment[:author] == "JeffAtwood"
 
         comment[:date] = comment[:date] ? DateTime.strptime(comment[:date], "%m/%d/%Y") : Time.now
         entry[:comments] << comment if comment[:body].present?
