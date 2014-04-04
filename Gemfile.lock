@@ -1,4 +1,9 @@
 PATH
+  remote: vendor/gems/discourse_extras
+  specs:
+    discourse_extras (0.0.1)
+
+PATH
   remote: vendor/gems/discourse_plugin
   specs:
     discourse_plugin (0.0.1)
@@ -397,6 +402,7 @@ DEPENDENCIES
   better_errors
   binding_of_caller
   certified
+  discourse_extras!
   discourse_plugin!
   email_reply_parser-discourse
   ember-rails
